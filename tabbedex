@@ -104,6 +104,11 @@
 ## 18. Remove periodical update of title. It is udated only when needed
 ##     and 2 seconds after last press of enter key.
 ##
+## 18. Custom title.
+##     Use the following in your ~/.Xdefaults to set custom title showing
+##     current working directory and git branch in that directory:
+##     URXvt.tabbed.custom-title: echo -n `pwd`; eval __git_ps1;
+##     Since this time forward your PS1 is free again!
 
 use Encode qw(decode);
 
@@ -176,14 +181,23 @@ sub refresh {
 
    if ($self->{tab_title} && $ofs + 3 < $ncol) {
       my $term = $self->{term};
-      my @str = $term->XGetWindowProperty($term->parent, $self->{tab_title});
-      if (@str && $str[2]) {
-         my $str = '| ' . decode("utf8", $str[2]);
+         my $tmp = "";
+         my $custom_title = $self->{custom_title};
+         my $pid = $self->{cur}{pid};
+         my $pwd = readlink "/proc/$pid/cwd";
+         if ($custom_title ne "" && $pwd) {
+            $tmp = `cd $pwd; /bin/bash -i -c "$custom_title"`;
+         } else {
+            my @str = $term->XGetWindowProperty($term->parent, $self->{tab_title});
+            if (@str && $str[2]) {
+               $tmp = decode("utf8", $str[2]);
+            }
+         }
+         my $str = '| ' . $tmp;
          my $len = length $str;
          $len = $ncol - $ofs if $ofs + $len > $ncol;
          substr $text, $ofs, $len, substr $str, 0, $len;
          @$rend[$ofs + 2 .. $ofs + $len - 1] = ($self->{rs_title}) x ($len - 2);
-      }
    }
 
    $self->{tabofs} = \@ofs;
@@ -428,7 +442,8 @@ sub on_init {
       ($self->my_resource ('no-tabbedex-keys') or 'false') !~ /^(?:false|0|no)/i;
     $self->{reopen_on_close} =
       ($self->my_resource ('reopen-on-close') or 'false') !~ /^(?:false|0|no)/i;
-
+    $self->{custom_title} =
+      $self->my_resource ('custom-title');
    ();
 }
 
