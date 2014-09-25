@@ -99,6 +99,11 @@
 ##
 ## 17. New urxvt tab in current directory
 ##
+## Added by Milan Svoboda
+##
+## 18. Remove periodical update of title. It is udated only when needed
+##     and 2 seconds after last press of enter key.
+##
 
 use Encode qw(decode);
 
@@ -450,13 +455,13 @@ sub on_start {
 
    $self->new_tab (@argv);
 
-   if (defined $self->{timeouts}) {
-      my $interval = ($self->{timeouts}[@{ $self->{timeouts} } - 1]->[0]);
-      $interval = int($interval / 4);
-      $self->{timer} = urxvt::timer->new
-                                   ->interval($interval < 1 ? 1 : $interval)
-                                   ->cb ( sub { $self->refresh; } );
-   }
+#   if (defined $self->{timeouts}) {
+#      my $interval = ($self->{timeouts}[@{ $self->{timeouts} } - 1]->[0]);
+#      $interval = int($interval / 4);
+#      $self->{timer} = urxvt::timer->new
+#                                   ->interval($interval < 1 ? 1 : $interval)
+#                                   ->cb ( sub { $self->refresh; } );
+#   }
 
    ();
 }
@@ -556,6 +561,17 @@ sub tab_key_press {
       }
       $self->refresh;
       return 1;
+   }
+
+   # Enter key to refresh after specified time.
+   if ($keysym == 0xFF0D) {
+       if ($self->{timer} == undef) {
+           $self->{timer} = urxvt::timer->new
+                                        ->cb ( sub { $self->refresh; } )
+                                        ->after(2);
+       } else {
+           $self->{timer}->after(2);
+       }
    }
 
    return () if ($self->{no_default_keys});
