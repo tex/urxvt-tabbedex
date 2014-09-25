@@ -94,6 +94,11 @@
 ##     Use the following in your ~/.Xdefaults to enable:
 ##     URXvt.tabbed.reopen-on-close: yes
 ##
+## Added by Milan Svoboda from Christoph Berg's blog
+## (http://www.df7cb.de/blog/2014/New_urxvt_tab_in_current_directory.html)
+##
+## 17. New urxvt tab in current directory
+##
 
 use Encode qw(decode);
 
@@ -212,6 +217,15 @@ sub new_tab {
 
       $term->resource (perl_ext_2 => $term->resource ("perl_ext_2") . ",-tabbedex");
    };
+
+   if (@{ $self->{tabs} }) {
+      # Get the working directory of the current tab and append a -cd to the command line
+      my $pid = $self->{cur}{pid};
+      my $pwd = readlink "/proc/$pid/cwd";
+      if ($pwd) {
+         push @argv, "-cd", $pwd;
+      }
+   }
 
    push @urxvt::TERM_EXT, urxvt::ext::tabbedex::tab::;
 
@@ -474,6 +488,12 @@ sub on_wm_delete_window {
 }
 
 
+sub tab_child_start {
+   my ($self, $term, $pid) = @_;
+   $term->{pid} = $pid;
+   1;
+}
+
 sub tab_start {
    my ($self, $tab) = @_;
 
@@ -665,7 +685,7 @@ package urxvt::ext::tabbedex::tab;
 # simply proxies all interesting calls back to the tabbedex class.
 
 {
-   for my $hook qw(start destroy user_command key_press property_notify add_lines) {
+   for my $hook (qw(start destroy user_command key_press property_notify add_lines child_start)) {
       eval qq{
          sub on_$hook {
             my \$parent = \$_[0]{term}{parent}
