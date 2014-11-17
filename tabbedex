@@ -473,14 +473,6 @@ sub on_start {
 
    $self->new_tab (@argv);
 
-#   if (defined $self->{timeouts}) {
-#      my $interval = ($self->{timeouts}[@{ $self->{timeouts} } - 1]->[0]);
-#      $interval = int($interval / 4);
-#      $self->{timer} = urxvt::timer->new
-#                                   ->interval($interval < 1 ? 1 : $interval)
-#                                   ->cb ( sub { $self->refresh; } );
-#   }
-
    ();
 }
 
