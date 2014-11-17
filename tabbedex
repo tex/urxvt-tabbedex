@@ -237,12 +237,15 @@ sub new_tab {
       $term->resource (perl_ext_2 => $term->resource ("perl_ext_2") . ",-tabbedex");
    };
 
-   if (@{ $self->{tabs} }) {
-      # Get the working directory of the current tab and append a -cd to the command line
+   if (@{$self->{tabs}}) {
+      # Get the working directory of the current tab and prepend the '-cd path' to the arguments
+      # The argv is passed to urxvt, the -cd is urxvt's parameter. In case there already is -e
+      # in the argv, the `-cd path` must be before it, so prepending is pretty safe...
       my $pid = $self->{cur}{pid};
       my $pwd = readlink "/proc/$pid/cwd";
       if ($pwd) {
-         push @argv, "-cd", $pwd;
+         unshift(@argv, $pwd);
+         unshift(@argv, "-cd");
       }
    }
 
