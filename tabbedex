@@ -52,7 +52,7 @@
 ##    title is displayed).  This make tab bar look nicer.
 ##
 ## Added by StephenB:
-## 
+##
 ## 7. Tabs can be named with Shift+Up (Enter to confirm, Escape to
 ##    cancel).
 ##
@@ -109,6 +109,17 @@
 ##     current working directory and git branch in that directory:
 ##     URXvt.tabbed.custom-title: echo -n `pwd`; eval __git_ps1;
 ##     Since this time forward your PS1 is free again!
+##
+## Added by Jim Diamond <Jim dot Diamond at acadiau dot ca>
+##
+## 14. The previous version of on_start() threw away all of @argv up
+##     to the "-e" (if it exists). This tossed away arguments that I
+##     want, most notably "-ls", "-e". The code below
+##     passes through everything except "-pe <arg>". If
+##     other options are found to be problematic they will need to be
+##     tossed too. The other args are saved for all tabs, which may or
+##     may not be desired in the case of
+##     urxvt -pe tabbedex -e <some command>
 
 use Encode qw(decode);
 
@@ -376,7 +387,7 @@ sub on_button_release {
          last if     $col <  $button->[0];
          next unless $col <= $button->[1];
          if ($button->[2] == -1) {
-            $self->new_tab;
+            $self->new_tab(@{$self->{argv}});
          } else {
             $self->make_current($self->{tabs}[$button->[2]]);
          }
@@ -461,17 +472,24 @@ sub on_start {
 
    $self->cmd_parse ("\033[?25l");
 
-   my @argv = $self->argv;
-
-   do {
-      shift @argv;
-   } while @argv && $argv[0] ne "-e";
+   my @argv = ();
+   my @tmp = $self->argv;
+   shift @tmp;          # toss away argv[0] (== "urxvt" or similar).
+   while (@tmp != ()) {
+       if ($tmp[0] eq "-pe") {
+           shift @tmp;  # toss away -pe, we later toss its arg.
+       } else {
+           push(@argv, $tmp[0]);
+       }
+       shift @tmp;
+   }
+   $self->{argv} = [@argv];
 
    if ($self->{tab_title}) {
       $self->{tab_title} = $self->{term}->XInternAtom("_NET_WM_NAME", 1);
    }
 
-   $self->new_tab (@argv);
+   $self->new_tab(@{$self->{argv}});
 
    ();
 }
@@ -527,7 +545,7 @@ sub tab_destroy {
    my ($self, $tab) = @_;
 
    if ($self->{reopen_on_close} && $#{ $self->{tabs} } == 0) {
-      $self->new_tab;
+      $self->new_tab(@{$self->{argv}});
       $self->make_current ($self->{tabs}[-1]);
    }
 
@@ -594,7 +612,7 @@ sub tab_key_press {
          return 1;
 
       } elsif ($keysym == 0xff54) {
-         $self->new_tab;
+         $self->new_tab(@{$self->{argv}});
          return 1;
 
       } elsif ($keysym == 0xff52) {
@@ -634,7 +652,7 @@ sub tab_user_command {
   my ($self, $tab, $cmd, $proxy_events) = @_;
 
   if ($cmd eq 'tabbedex:new_tab') {
-    $self->new_tab;
+    $self->new_tab(@{$self->{argv}});
   }
   elsif ($cmd eq 'tabbedex:next_tab') {
     $self->change_tab($tab, 1);
